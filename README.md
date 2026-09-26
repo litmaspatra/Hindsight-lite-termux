@@ -84,7 +84,7 @@ and set `obsidian_vault` to the folder where Hindsight Lite should create/sync i
 
 ```json
 {
-  "obsidian_vault": "/storage/emulated/0/ObsidianVault/Hindsight"
+  "obsidian_vault": "/storage/emulated/0/YourObsidianVaultName"
 }
 ```
 
