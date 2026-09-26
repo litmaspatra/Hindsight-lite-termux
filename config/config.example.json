@@ -1,8 +1,12 @@
 {
-  "base_url": "http://127.0.0.1:PORT/v1",
-  "model": "YOUR_MODEL",
+  "llm_base_url": "http://127.0.0.1:20128/v1",
+  "llm_model": "YOUR_MODEL",
+  "llm_api_key_env": "YOUR_LLM_API_KEY_ENV",
+  "embedding_base_url": "http://127.0.0.1:20128/v1",
   "embedding_model": "YOUR_EMBEDDING_MODEL",
-  "api_key_env": "HINDSIGHT_LITE_API_KEY",
-  "embedding_api_key_env": "HINDSIGHT_LITE_EMBEDDING_API_KEY",
-  "embedding_timeout_seconds": 60
+  "embedding_api_key_env": "YOUR_EMBEDDING_API_KEY_ENV",
+  "embedding_timeout": 60,
+  "obsidian_vault": "",
+  "prefetch_limit": 6,
+  "prefetch_chars": 6000
 }
