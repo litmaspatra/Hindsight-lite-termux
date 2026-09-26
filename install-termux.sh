@@ -9,10 +9,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$HERMES_HOME/plugins/hindsight-lite"
 DATA_DIR="$HERMES_HOME/hindsight-lite"
 CONFIG_YAML="$HERMES_HOME/config.yaml"
-WHEEL_NAME="hindsight_lite_termux-0.6.0a1-py3-none-any.whl"
-EXPECTED_SHA="37ad97a2dd9fe40d63e79de3bbfb7c7b102c2bd4301ae4a19bec6da32d346b64"
+EXPECTED_SHA="d7ed61f6bedc1b395ff3a3e6eace3f9137185a025e913ef31e1fcdec3103daa9"
 TMP_DIR="$(mktemp -d)"
-WHEEL="$TMP_DIR/$WHEEL_NAME"
+ARCHIVE="$TMP_DIR/hindsight_lite_termux-0.6.0a1-src.tar.gz"
+SRC_DIR="$TMP_DIR/src"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 echo "== Hindsight Lite for Hermes / Termux =="
@@ -23,30 +23,80 @@ if [ ! -x "$PY" ]; then
   exit 1
 fi
 
-PARTS=("$ROOT"/dist/hindsight_lite_termux-0.6.0a1.whl.b64.part*)
-if [ "${#PARTS[@]}" -ne 7 ] || [ ! -f "${PARTS[0]}" ]; then
-  echo "ERROR: release wheel chunks are missing. Re-clone the repository and retry."
+PARTS=("$ROOT"/dist/hindsight_lite_termux-0.6.0a1-src.b64.part*)
+if [ "${#PARTS[@]}" -ne 5 ] || [ ! -f "${PARTS[0]}" ]; then
+  echo "ERROR: verified source payload is incomplete."
+  echo "Run git pull or re-clone the repository and retry."
   exit 1
 fi
 
-cat "${PARTS[@]}" | tr -d '\r\n' | base64 -d > "$WHEEL"
-ACTUAL_SHA="$(sha256sum "$WHEEL" | awk '{print $1}')"
+cat "${PARTS[@]}" | tr -d '\r\n' | base64 -d > "$ARCHIVE"
+ACTUAL_SHA="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
 if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-  echo "ERROR: wheel checksum mismatch."
+  echo "ERROR: source archive checksum mismatch."
   echo "Expected: $EXPECTED_SHA"
   echo "Actual:   $ACTUAL_SHA"
   exit 1
 fi
 
-echo "PASS  release checksum"
+echo "PASS  source checksum"
 
-if ! "$PY" -m zipfile -t "$WHEEL" >/dev/null 2>&1; then
-  echo "ERROR: reconstructed wheel is not a valid ZIP/wheel archive."
+if ! tar -tzf "$ARCHIVE" >/dev/null 2>&1; then
+  echo "ERROR: verified source payload is not a valid tar.gz archive."
   exit 1
 fi
 
-echo "PASS  wheel archive"
-"$PY" -m pip install --upgrade "$WHEEL"
+echo "PASS  source archive"
+mkdir -p "$SRC_DIR"
+tar -xzf "$ARCHIVE" -C "$SRC_DIR"
+
+EXPECTED_FILES=(
+  __init__.py
+  db.py
+  embeddings.py
+  hermes.py
+  obsidian.py
+  reflection.py
+  retention.py
+  retrieval.py
+  schema.py
+)
+for f in "${EXPECTED_FILES[@]}"; do
+  if [ ! -f "$SRC_DIR/hindsight_lite/$f" ]; then
+    echo "ERROR: source payload is missing hindsight_lite/$f"
+    exit 1
+  fi
+done
+
+echo "PASS  source files"
+
+SITE_PACKAGES="$("$PY" - <<'PY'
+import sysconfig
+print(sysconfig.get_paths()["purelib"])
+PY
+)"
+if [ -z "$SITE_PACKAGES" ] || [ ! -d "$SITE_PACKAGES" ]; then
+  echo "ERROR: could not locate Hermes site-packages."
+  exit 1
+fi
+
+TARGET="$SITE_PACKAGES/hindsight_lite"
+rm -rf "$TARGET"
+cp -a "$SRC_DIR/hindsight_lite" "$TARGET"
+
+echo "PASS  package installed from reviewed source"
+
+INSTALLED_VER="$("$PY" - <<'PY'
+import hindsight_lite
+print(hindsight_lite.__version__)
+PY
+)"
+if [ "$INSTALLED_VER" != "0.6.0a1" ]; then
+  echo "ERROR: installed version is '$INSTALLED_VER', expected 0.6.0a1."
+  exit 1
+fi
+
+echo "PASS  package version $INSTALLED_VER"
 
 mkdir -p "$PLUGIN_DIR" "$DATA_DIR"
 chmod 700 "$DATA_DIR"
@@ -73,19 +123,8 @@ else
   echo "  provider: hindsight-lite"
 fi
 
-INSTALLED_VER="$("$PY" - <<'PY'
-import hindsight_lite
-print(hindsight_lite.__version__)
-PY
-)"
-if [ "$INSTALLED_VER" != "0.6.0a1" ]; then
-  echo "ERROR: installed version is '$INSTALLED_VER', expected 0.6.0a1."
-  exit 1
-fi
-
 echo
 echo "Installation complete: Hindsight Lite $INSTALLED_VER"
-echo "Edit $DATA_DIR/config.json with your endpoint/model names."
-echo "Keep real credentials in environment variables named by *_api_key_env."
+echo "Existing memory data/config were preserved."
 echo "Restart Hermes or start a new session, then run:"
 echo "  bash $ROOT/scripts/doctor.sh"
