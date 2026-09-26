@@ -10,7 +10,7 @@ PLUGIN_DIR="$HERMES_HOME/plugins/hindsight-lite"
 DATA_DIR="$HERMES_HOME/hindsight-lite"
 CONFIG_YAML="$HERMES_HOME/config.yaml"
 WHEEL_NAME="hindsight_lite_termux-0.6.0a1-py3-none-any.whl"
-EXPECTED_SHA="6556e2f01d9d2e7b357386bdf76a5867050d1690422b6f1f6a1becdd1f7cca1a"
+EXPECTED_SHA="37ad97a2dd9fe40d63e79de3bbfb7c7b102c2bd4301ae4a19bec6da32d346b64"
 TMP_DIR="$(mktemp -d)"
 WHEEL="$TMP_DIR/$WHEEL_NAME"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -39,6 +39,13 @@ if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
 fi
 
 echo "PASS  release checksum"
+
+if ! "$PY" -m zipfile -t "$WHEEL" >/dev/null 2>&1; then
+  echo "ERROR: reconstructed wheel is not a valid ZIP/wheel archive."
+  exit 1
+fi
+
+echo "PASS  wheel archive"
 "$PY" -m pip install --upgrade "$WHEEL"
 
 mkdir -p "$PLUGIN_DIR" "$DATA_DIR"
