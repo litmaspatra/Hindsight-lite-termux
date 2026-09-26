@@ -1,0 +1,4 @@
+name: hindsight-lite
+version: 0.6.0a1
+description: Lightweight local long-term memory for Hermes on Android/Termux.
+hooks: []
