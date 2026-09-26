@@ -4,105 +4,81 @@ set -euo pipefail
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 AGENT_DIR="${HERMES_AGENT_DIR:-$HERMES_HOME/hermes-agent}"
 VENV="${HERMES_VENV:-$AGENT_DIR/venv}"
+PY="$VENV/bin/python"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$HERMES_HOME/plugins/hindsight-lite"
-CONFIG_DIR="$HERMES_HOME/hindsight-lite"
-CONFIG_FILE="$CONFIG_DIR/config.json"
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-echo "== Hindsight Lite / Hermes Termux installer =="
-
-if [ ! -x "$VENV/bin/python" ]; then
-  echo "ERROR: Hermes Python virtualenv not found at:"
-  echo "  $VENV"
-  echo "Set HERMES_VENV to the correct Hermes venv and retry."
-  exit 1
-fi
-
-WHEEL="$(find "$REPO_DIR/dist" -maxdepth 1 -type f -name 'hindsight_lite-0.9.0a1-*.whl' 2>/dev/null | head -n1 || true)"
-if [ -z "$WHEEL" ]; then
-  echo "ERROR: verified hindsight_lite 0.9.0a1 wheel is not present in dist/."
-  echo "Do not substitute an older build."
-  echo "See docs/EXPORT_FIXED_BUILD.md."
-  exit 1
-fi
-
-mkdir -p "$PLUGIN_DIR" "$CONFIG_DIR"
-
-"$VENV/bin/python" -m pip install --upgrade "$WHEEL"
-
-cat > "$PLUGIN_DIR/__init__.py" <<'PY'
-from hindsight_lite.hermes import HermesLiteConfig, HermesMemoryBridge, TOOL_SCHEMAS
-
-try:
-    from agent.memory_provider import MemoryProvider
-except ImportError:
-    from hermes_agent.agent.memory_provider import MemoryProvider
-
-
-class HindsightLiteProvider(MemoryProvider):
-    @property
-    def name(self):
-        return "hindsight-lite"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self._bridge = None
-
-    async def initialize(self, config=None, **kwargs):
-        cfg = HermesLiteConfig.load_default()
-        self._bridge = HermesMemoryBridge(cfg)
-        maybe = self._bridge.initialize()
-        if hasattr(maybe, "__await__"):
-            await maybe
-
-    def system_prompt_block(self):
-        return (
-            "# Hindsight Lite Memory\n"
-            "Use hmem_recall for explicit lookup, hmem_reflect for cross-memory synthesis, "
-            "and hmem_remember/hmem_update for durable memory changes."
-        )
-
-    def get_tool_schemas(self):
-        return TOOL_SCHEMAS
-
-    async def handle_tool_call(self, name, arguments):
-        result = self._bridge.handle_tool_call(name, arguments)
-        if hasattr(result, "__await__"):
-            result = await result
-        return result
-
-    async def shutdown(self):
-        if self._bridge is not None:
-            maybe = self._bridge.shutdown()
-            if hasattr(maybe, "__await__"):
-                await maybe
-PY
-
-if [ ! -f "$CONFIG_FILE" ]; then
-  cp "$REPO_DIR/config/config.example.json" "$CONFIG_FILE"
-  chmod 600 "$CONFIG_FILE"
-  echo "Created example config: $CONFIG_FILE"
-else
-  echo "Keeping existing config: $CONFIG_FILE"
-fi
-
+DATA_DIR="$HERMES_HOME/hindsight-lite"
 CONFIG_YAML="$HERMES_HOME/config.yaml"
+WHEEL_NAME="hindsight_lite_termux-0.6.0a1-py3-none-any.whl"
+EXPECTED_SHA="6556e2f01d9d2e7b357386bdf76a5867050d1690422b6f1f6a1becdd1f7cca1a"
+TMP_DIR="$(mktemp -d)"
+WHEEL="$TMP_DIR/$WHEEL_NAME"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+echo "== Hindsight Lite for Hermes / Termux =="
+
+if [ ! -x "$PY" ]; then
+  echo "ERROR: Hermes Python venv not found: $VENV"
+  echo "Set HERMES_VENV to the active Hermes venv and retry."
+  exit 1
+fi
+
+PARTS=("$ROOT"/dist/hindsight_lite_termux-0.6.0a1.whl.b64.part*)
+if [ "${#PARTS[@]}" -ne 7 ] || [ ! -f "${PARTS[0]}" ]; then
+  echo "ERROR: release wheel chunks are missing. Re-clone the repository and retry."
+  exit 1
+fi
+
+cat "${PARTS[@]}" | tr -d '\r\n' | base64 -d > "$WHEEL"
+ACTUAL_SHA="$(sha256sum "$WHEEL" | awk '{print $1}')"
+if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+  echo "ERROR: wheel checksum mismatch."
+  echo "Expected: $EXPECTED_SHA"
+  echo "Actual:   $ACTUAL_SHA"
+  exit 1
+fi
+
+echo "PASS  release checksum"
+"$PY" -m pip install --upgrade "$WHEEL"
+
+mkdir -p "$PLUGIN_DIR" "$DATA_DIR"
+chmod 700 "$DATA_DIR"
+cp "$ROOT/plugin/hindsight-lite/__init__.py" "$PLUGIN_DIR/__init__.py"
+cp "$ROOT/plugin/hindsight-lite/plugin.yaml" "$PLUGIN_DIR/plugin.yaml"
+
+if [ ! -f "$DATA_DIR/config.json" ]; then
+  cp "$ROOT/config/config.example.json" "$DATA_DIR/config.json"
+  chmod 600 "$DATA_DIR/config.json"
+  echo "Created config: $DATA_DIR/config.json"
+else
+  echo "Keeping existing config: $DATA_DIR/config.json"
+fi
+
 if [ -f "$CONFIG_YAML" ]; then
   BACKUP="$CONFIG_YAML.backup-hindsight-lite-$(date +%Y%m%d-%H%M%S)"
   cp "$CONFIG_YAML" "$BACKUP"
-
-  "$VENV/bin/python" "$REPO_DIR/scripts/set_provider.py" "$CONFIG_YAML" hindsight-lite
-  echo "Hermes config backed up to: $BACKUP"
+  "$PY" "$ROOT/scripts/set_provider.py" "$CONFIG_YAML" hindsight-lite
+  echo "Backed up Hermes config to: $BACKUP"
 else
   echo "WARNING: $CONFIG_YAML not found."
-  echo "Add this manually:"
+  echo "Set this manually in the active Hermes config:"
   echo "memory:"
   echo "  provider: hindsight-lite"
 fi
 
+INSTALLED_VER="$("$PY" - <<'PY'
+import hindsight_lite
+print(hindsight_lite.__version__)
+PY
+)"
+if [ "$INSTALLED_VER" != "0.6.0a1" ]; then
+  echo "ERROR: installed version is '$INSTALLED_VER', expected 0.6.0a1."
+  exit 1
+fi
+
 echo
-echo "Installation complete."
-echo "1. Edit $CONFIG_FILE and set only non-secret endpoint/model values."
-echo "2. Put API keys in environment variables, not in config.json."
-echo "3. Restart Hermes / start a new Hermes session."
-echo "4. Run: bash scripts/doctor.sh"
+echo "Installation complete: Hindsight Lite $INSTALLED_VER"
+echo "Edit $DATA_DIR/config.json with your endpoint/model names."
+echo "Keep real credentials in environment variables named by *_api_key_env."
+echo "Restart Hermes or start a new session, then run:"
+echo "  bash $ROOT/scripts/doctor.sh"
