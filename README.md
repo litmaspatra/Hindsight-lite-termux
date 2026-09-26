@@ -13,7 +13,7 @@ A lightweight long-term-memory provider for Hermes Agent on Android/Termux, pack
 - 10 flat `hmem_*` tools
 - Hermes `MemoryProvider` adapter
 - Termux installer and doctor script
-- SHA-256 verification of the packaged release before installation
+- SHA-256 verification of the packaged source before installation
 
 The build intentionally avoids Torch, MLX, and local NumPy-dependent embedding stacks so it stays practical on Termux.
 
@@ -27,7 +27,7 @@ cd Hindsight-lite-termux
 bash install-termux.sh
 ```
 
-The installer reconstructs the reviewed wheel from the repository's release chunks, verifies its SHA-256 checksum, installs it into the active Hermes Python venv, installs the Hermes provider adapter, preserves an existing Hindsight Lite config/database, backs up `config.yaml`, and sets:
+The installer reconstructs the reviewed source archive from the repository payload, verifies its SHA-256 checksum, validates the archive and expected source files, installs the exact package source into the active Hermes Python environment, installs the Hermes provider adapter, preserves an existing Hindsight Lite config/database, backs up `config.yaml`, and sets:
 
 ```yaml
 memory:
