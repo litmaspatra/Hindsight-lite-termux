@@ -1,0 +1,32 @@
+# Secrets and local state
+.env
+.env.*
+*.key
+*.pem
+*token*.json
+*credentials*.json
+USER.md
+MEMORY.md
+
+# Hindsight/Hermes local state
+*.db
+*.sqlite
+*.sqlite3
+data/
+state/
+backups/
+exported-fixed-package/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build
+build/
+*.egg-info/
+
+# Keep built wheel out until explicitly reviewed for public release
+dist/*
+!dist/.gitkeep
