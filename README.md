@@ -1,43 +1,25 @@
 # Hindsight Lite for Hermes on Termux
 
-A Termux-friendly packaging and setup guide for the lightweight Hindsight memory provider used with Hermes Agent.
+A lightweight long-term-memory provider for Hermes Agent on Android/Termux, packaged from the known-good working installation.
 
-This repository is intentionally designed for Android/Termux environments where the full Hindsight stack may fail because of unavailable or impractical native dependencies such as Torch, MLX, or NumPy-heavy components.
+## What is included
 
-## What this setup uses
+- Exact reviewed working `hindsight_lite` build (`0.6.0a1`)
+- SQLite + FTS5 memory storage
+- Semantic embeddings through an OpenAI-compatible endpoint
+- Compatibility with embedding responses that omit the optional `index` field
+- Configurable embedding timeout (60 seconds by default)
+- Embedding backfill/reindex through `hmem_reindex_embeddings`
+- 10 flat `hmem_*` tools
+- Hermes `MemoryProvider` adapter
+- Termux installer and doctor script
+- SHA-256 verification of the packaged release before installation
 
-- Hermes external memory provider: `hindsight-lite`
-- Tested fixed package target: `hindsight_lite 0.9.0a1`
-- Local SQLite / FTS5 storage
-- External OpenAI-compatible LLM / embedding endpoint
-- No bundled API keys or credentials
-- No user memories are included
-- No device-specific paths are hard-coded
+The build intentionally avoids Torch, MLX, and local NumPy-dependent embedding stacks so it stays practical on Termux.
 
-## Why this exists
+## Install
 
-The full Hindsight installation was not a good fit for Android/Termux. The working setup used a lightweight provider instead, with several compatibility fixes:
-
-- Avoid heavy Torch / MLX dependencies.
-- Avoid relying on a Termux NumPy build for local embedding models.
-- Use an external OpenAI-compatible endpoint for embeddings / LLM work.
-- Handle embedding responses that omit the optional `index` field.
-- Use a configurable embedding timeout (60 seconds in the fixed build).
-- Include an embedding reindex operation in the fixed build.
-- Ensure Hermes is actually configured with `memory.provider: hindsight-lite`.
-- Verify the active provider after configuration rather than assuming activation succeeded.
-
-## Repository status
-
-The installer/configuration framework is complete.
-
-The actual fixed `hindsight_lite 0.9.0a1` Python package must be exported from a known-good installation before it is published here. This repository deliberately does **not** recreate or guess that package source.
-
-See `docs/EXPORT_FIXED_BUILD.md`.
-
-## Safe install flow
-
-Once the verified package is present under `dist/`:
+Hermes Agent must already be installed.
 
 ```bash
 git clone https://github.com/litmaspatra/Hindsight-lite-termux.git
@@ -45,62 +27,63 @@ cd Hindsight-lite-termux
 bash install-termux.sh
 ```
 
-Then edit the generated config:
-
-```text
-~/.hermes/hindsight-lite/config.json
-```
-
-and restart Hermes.
-
-## Hermes configuration
-
-The required provider setting is:
+The installer reconstructs the reviewed wheel from the repository's release chunks, verifies its SHA-256 checksum, installs it into the active Hermes Python venv, installs the Hermes provider adapter, preserves an existing Hindsight Lite config/database, backs up `config.yaml`, and sets:
 
 ```yaml
 memory:
   provider: hindsight-lite
 ```
 
-The installer backs up the Hermes config before editing it.
+Then edit:
 
-## Example backend
-
-The configuration example uses placeholders only:
-
-```json
-{
-  "base_url": "http://127.0.0.1:PORT/v1",
-  "model": "YOUR_MODEL",
-  "embedding_model": "YOUR_EMBEDDING_MODEL",
-  "api_key_env": "HINDSIGHT_LITE_API_KEY",
-  "embedding_api_key_env": "HINDSIGHT_LITE_EMBEDDING_API_KEY",
-  "embedding_timeout_seconds": 60
-}
+```text
+~/.hermes/hindsight-lite/config.json
 ```
 
-Never commit real API keys.
+Set your endpoint/model names. Keep real credentials in environment variables, never in the JSON or repository.
 
-## Verification
-
-After installation:
+Restart Hermes or start a new session, then verify:
 
 ```bash
 bash scripts/doctor.sh
 ```
 
-The doctor checks package version, plugin discovery, config presence, SQLite FTS5 support, and the configured Hermes provider without printing secrets.
+## Configuration example
+
+```json
+{
+  "llm_base_url": "http://127.0.0.1:20128/v1",
+  "llm_model": "YOUR_MODEL",
+  "llm_api_key_env": "YOUR_LLM_API_KEY_ENV",
+  "embedding_base_url": "http://127.0.0.1:20128/v1",
+  "embedding_model": "YOUR_EMBEDDING_MODEL",
+  "embedding_api_key_env": "YOUR_EMBEDDING_API_KEY_ENV",
+  "embedding_timeout": 60,
+  "obsidian_vault": "",
+  "prefetch_limit": 6,
+  "prefetch_chars": 6000
+}
+```
+
+## Tools
+
+- `hmem_recall`
+- `hmem_remember`
+- `hmem_reflect`
+- `hmem_forget`
+- `hmem_update`
+- `hmem_status`
+- `hmem_reindex_embeddings`
+- `hmem_trace`
+- `hmem_graph`
+- `hmem_sync_obsidian`
+
+## Why the version is 0.6.0a1
+
+The known-good phone installation reports `0.6.0a1`. The release here is built from that exact working source rather than renaming it to an assumed later version. Functionality and compatibility fixes were verified from the exported source and by local smoke tests.
 
 ## Privacy
 
-This repository must never contain:
-
-- API keys or OAuth tokens
-- `.env` files
-- actual USER.md or MEMORY.md contents
-- Google / Telegram / WhatsApp credentials
-- phone numbers, contacts, private messages, or account IDs
-- device backups or databases
-- absolute paths copied from a private device
+No personal memories, memory database, API keys, OAuth tokens, account details, contacts, private messages, phone data, or private configuration are included.
 
 See `SECURITY.md`.
