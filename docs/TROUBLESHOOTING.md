@@ -2,8 +2,6 @@
 
 ## Hermes still uses its old memory provider
 
-The plugin being installed does not automatically mean Hermes is using it.
-
 Check:
 
 ```bash
@@ -19,52 +17,43 @@ memory:
 
 Restart Hermes and begin a new session after changing providers.
 
-## `hindsight_lite.__version__` reports 0.6.0a1 or 0.8.0a1
+## Which package version is expected?
 
-That is the wrong build for this packaging.
-
-The known-good fixed target is:
+The reviewed known-good build reports:
 
 ```text
-0.9.0a1
+0.6.0a1
 ```
 
-Do not silently continue with an older package because tool schemas and fixes may differ.
+That version string comes from the actual working installation that was exported and tested. Do not replace it with an assumed `0.9.0a1` build.
 
 ## `KeyError: 'function'` while inspecting TOOL_SCHEMAS
 
-Do not assume every tool schema is wrapped as:
+Compatible tooling should support both flat schemas and schemas wrapped in a `function` object. The included doctor handles both forms.
 
-```python
-{"function": {...}}
+## Installer says checksum mismatch
+
+Do not bypass the check. Delete the clone and fetch a clean copy:
+
+```bash
+cd ~
+rm -rf Hindsight-lite-termux
+git clone https://github.com/litmaspatra/Hindsight-lite-termux.git
+cd Hindsight-lite-termux
+bash install-termux.sh
 ```
-
-Inspect both forms:
-
-```python
-if isinstance(item.get("function"), dict):
-    name = item["function"].get("name")
-else:
-    name = item.get("name")
-```
-
-The included doctor uses this compatible logic.
 
 ## Full Hindsight fails on Termux
 
-The full stack may pull native ML dependencies that are unavailable or impractical on Android/Termux, particularly Torch / MLX and NumPy-dependent local embedding stacks.
-
-Hindsight Lite was selected specifically to avoid requiring those heavy local ML dependencies.
+The full stack may pull native ML dependencies that are unavailable or impractical on Android/Termux, particularly Torch / MLX and NumPy-dependent local embedding stacks. Hindsight Lite avoids requiring those heavy local ML dependencies.
 
 ## Embedding response has no `index`
 
-Some OpenAI-compatible routers return embedding objects without the optional `index` field.
-
-The fixed build must not require `index` to be present.
+Some OpenAI-compatible endpoints return embedding objects without the optional `index` field. This build supports consistently indexed responses and consistently unindexed responses; mixed batches are rejected rather than silently reordered.
 
 ## Embeddings time out
 
-The fixed build uses a configurable embedding timeout. The known-good setup used 60 seconds.
+The embedding timeout is configurable. The default in this package is 60 seconds.
 
 ## Semantic memories do not appear
 
@@ -72,19 +61,10 @@ Confirm:
 
 1. the embedding endpoint is reachable;
 2. the configured embedding model supports `/v1/embeddings`;
-3. the API-key environment variable exists if the endpoint requires one;
-4. existing rows have embeddings;
-5. reindex embeddings using the fixed build's reindex operation.
+3. the environment variable named by `embedding_api_key_env` exists if needed;
+4. existing memories have embeddings;
+5. run `hmem_reindex_embeddings` to backfill/rebuild embeddings when appropriate.
 
 ## Do not expose secrets while debugging
 
-Never paste:
-
-- `.env`
-- API keys
-- OAuth credentials
-- token JSON
-- memory database contents
-- real USER.md / MEMORY.md
-
-Use redacted status output only.
+Never paste `.env`, API keys, OAuth credentials, token JSON, memory database contents, or real USER.md / MEMORY.md files. Use redacted status output only.
