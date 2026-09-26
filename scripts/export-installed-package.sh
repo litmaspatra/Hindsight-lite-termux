@@ -21,8 +21,8 @@ PY
 VERSION="${META[0]:-}"
 SRC="${META[1]:-}"
 
-if [ "$VERSION" != "0.9.0a1" ]; then
-  echo "ERROR: refusing export. Installed version is '$VERSION'; expected 0.9.0a1."
+if [ "$VERSION" != "0.6.0a1" ]; then
+  echo "ERROR: refusing export. Installed version is '$VERSION'; expected reviewed build 0.6.0a1."
   exit 1
 fi
 
