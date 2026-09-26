@@ -1,51 +1,19 @@
-# Export the known-good fixed build safely
+# Export the known-good working build safely
 
-This step is intentionally separate from the public installer.
+The public installer already contains the reviewed build. This document is only for maintainers who need to reproduce or audit the source export from a known-good device.
 
-The goal is to export only the installed Python package code from a known-good device, with **no memory database, config, tokens, environment files, or user data**.
-
-## 1. Locate the installed package
-
-Run inside the Hermes Python venv:
-
-```bash
-"$HOME/.hermes/hermes-agent/venv/bin/python" - <<'PY'
-import pathlib, hindsight_lite
-print("version:", hindsight_lite.__version__)
-print("package:", pathlib.Path(hindsight_lite.__file__).resolve().parent)
-PY
-```
-
-Continue only if the version is:
+The working installation used for this release reports:
 
 ```text
-0.9.0a1
+0.6.0a1
 ```
 
-## 2. Create a clean source export
-
-From Termux:
+Run:
 
 ```bash
 bash scripts/export-installed-package.sh
 ```
 
-The script:
+The export helper copies only Python source files from the installed `hindsight_lite` package. It does not copy the Hindsight Lite data/config directory, memory database, environment files, caches, tokens, USER.md, or MEMORY.md.
 
-- copies only the `hindsight_lite` Python package;
-- rejects the export unless the installed version is `0.9.0a1`;
-- excludes `__pycache__`, `.pyc`, databases and config files;
-- scans text for common secret patterns;
-- never copies `~/.hermes/hindsight-lite/`, `.env`, USER.md or MEMORY.md.
-
-Review the produced directory manually before publishing it.
-
-## 3. Build a wheel
-
-After the package's packaging metadata has been reconstructed/verified, build a wheel in an isolated environment and place it under:
-
-```text
-dist/
-```
-
-The public installer deliberately refuses to install an older version.
+Always manually review an export before publishing it. The public release was built only after source review and package/plugin smoke tests.
