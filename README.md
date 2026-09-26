@@ -12,6 +12,7 @@ A lightweight long-term-memory provider for Hermes Agent on Android/Termux, pack
 - Embedding backfill/reindex through `hmem_reindex_embeddings`
 - 10 flat `hmem_*` tools
 - Hermes `MemoryProvider` adapter
+- Obsidian sync for memory/entity notes and graph visualization
 - Termux installer and doctor script
 - SHA-256 verification of the packaged source before installation
 
@@ -64,6 +65,70 @@ bash scripts/doctor.sh
   "prefetch_chars": 6000
 }
 ```
+
+## Obsidian semantic graph / 3D Galaxy View
+
+Hindsight Lite can export memories and extracted entities into an Obsidian vault so the relationships can be explored visually.
+
+The semantic search itself is still handled by Hindsight Lite using embeddings and SQLite. Obsidian is the visualization layer: linked memory/entity notes become a knowledge graph that can be viewed with Obsidian's normal Graph View or with a 3D graph plugin such as **Galaxy View**.
+
+### 1. Set the Obsidian vault path
+
+Edit:
+
+```text
+~/.hermes/hindsight-lite/config.json
+```
+
+and set `obsidian_vault` to the folder where Hindsight Lite should create/sync its notes. For example:
+
+```json
+{
+  "obsidian_vault": "/storage/emulated/0/ObsidianVault/Hindsight"
+}
+```
+
+Use a path that belongs to your own Obsidian vault. The repository intentionally does not hard-code a private device path.
+
+### 2. Sync Hindsight memories to Obsidian
+
+From Hermes, run the memory tool:
+
+```text
+hmem_sync_obsidian
+```
+
+This exports the Hindsight memory/entity structure as linked Markdown notes suitable for Obsidian graph visualization.
+
+You can also use:
+
+```text
+hmem_graph
+```
+
+to inspect relationships from Hermes itself.
+
+### 3. View the graph in Obsidian
+
+Open the configured vault in Obsidian and use the normal **Graph View** to inspect linked memories and entities.
+
+The graph is created from note links/relationships. It is not a neural network model running inside Obsidian; it is a visual knowledge graph produced from Hindsight Lite's semantic memory data.
+
+### 4. Optional: Galaxy View for a 3D graph
+
+For a more neural-network-like 3D visualization, install and enable the **Galaxy View** community plugin in Obsidian.
+
+Typical flow:
+
+1. Open Obsidian.
+2. Open **Settings → Community plugins**.
+3. Enable community plugins if needed.
+4. Browse/search for **Galaxy View** and install it.
+5. Enable Galaxy View.
+6. Open the Hindsight-backed vault/folder.
+7. Launch Galaxy View to explore the linked memories/entities as a 3D graph.
+
+After new memories or relationships are added, run `hmem_sync_obsidian` again so Obsidian/Galaxy View can display the updated graph.
 
 ## Tools
 
