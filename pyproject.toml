@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hindsight-lite-termux"
+version = "0.7.0"
+description = "Lightweight Hindsight memory provider for Hermes on Termux"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+packages = ["hindsight_lite"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
