@@ -2,8 +2,9 @@
 # Health check. Add --live to also test the configured LLM / embedding endpoints.
 set -u
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-VENV="${HERMES_VENV:-$HERMES_HOME/hermes-agent/venv}"
-PY="$VENV/bin/python"
+source "$(dirname "${BASH_SOURCE[0]}")/hermes-python.sh"
+resolve_hermes_python || exit 1
+PY="$HINDSIGHT_HERMES_PYTHON"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIVE=0; [ "${1:-}" = "--live" ] && LIVE=1
 fail=0
@@ -11,11 +12,11 @@ ok(){ echo "PASS  $1"; }
 bad(){ echo "FAIL  $1"; fail=1; }
 warn(){ echo "WARN  $1"; }
 
-[ -x "$PY" ] && ok "Hermes Python venv" || { bad "Hermes Python venv"; exit 1; }
+[ -x "$PY" ] && ok "Hermes Python: $PY" || { bad "Hermes Python"; exit 1; }
 
 WANT="$(sed -n 's/^__version__ *= *"\(.*\)"/\1/p' "$ROOT/hindsight_lite/__init__.py" 2>/dev/null | head -n1)"
 VER="$("$PY" -c 'import hindsight_lite; print(hindsight_lite.__version__)' 2>/dev/null)"
-if [ -z "$VER" ]; then bad "hindsight_lite is not installed in the Hermes venv"
+if [ -z "$VER" ]; then bad "hindsight_lite is not importable by the detected Hermes Python"
 elif [ -n "$WANT" ] && [ "$VER" != "$WANT" ]; then bad "installed $VER but this checkout is $WANT -- run install-termux.sh"
 else ok "Hindsight Lite package $VER"; fi
 
