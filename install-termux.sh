@@ -25,6 +25,14 @@ WANT_VER="$(sed -n 's/^__version__ *= *"\(.*\)"/\1/p' "$SRC/__init__.py" | head 
 [ -n "$WANT_VER" ] || { echo "ERROR: cannot read version from $SRC/__init__.py"; exit 1; }
 echo "PASS  source tree (version $WANT_VER)"
 
+# Fail before changing a live installation if the config editor dependency is absent.
+# The provider editor imports PyYAML using this exact Hermes Python.
+"$PY" -c 'import yaml' >/dev/null 2>&1 || {
+  echo "ERROR: PyYAML missing in active Hermes venv ($PY)." >&2
+  echo "No install changes made. Use Hermes CLI to set memory.provider or supply PyYAML safely." >&2
+  exit 1
+}
+
 SITE_PACKAGES="$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
 [ -d "$SITE_PACKAGES" ] || { echo "ERROR: could not locate Hermes site-packages."; exit 1; }
 
